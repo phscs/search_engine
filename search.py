@@ -66,3 +66,25 @@ def add_to_index(url, keywords):
 
 			if not url_already_in_entry:
 				index[keyword].append([rank, 0])
+				
+def crawl(seed_page_url):
+	urls_to_crawl = [seed_page_url]
+	urls_already_crawled = []
+	crawls = 0
+
+	while len(urls_to_crawl) > 0 and crawls < 50:
+		url = urls_to_crawl[0]
+		source = urllib.urlopen(url).read()
+
+		keywords = get_keywords(source)
+		add_to_index(url, keywords)
+
+		links = get_links(source)
+
+		for link in links:
+			if link != url and link not in urls_already_crawled and link not in urls_to_crawl:
+				urls_to_crawl.append(link)
+
+		urls_to_crawl.remove(url)
+		urls_already_crawled.append(url)
+		crawls += 1
