@@ -103,3 +103,67 @@ def uprank_relevance(keyword, url):
         for entry in index[keyword]:
             if url == entry[0]:
                 entry[1] += 1
+
+def query(search_string):
+	sanitized_search_string = ""
+
+	for character in search_string:
+		if character not in string.punctuation:
+			sanitized_search_string += character.lower()
+
+	keywords = sanitized_search_string.split(" ")
+
+	results = []
+
+	for keyword in keywords:
+		if keyword in index:
+			results.append(index[keyword])
+
+	if (len(results) != 0):
+		urls = []
+
+		for i in range(0, len(results)):
+			entry = results[i]
+			for url in entry:
+				in_other_entries = True
+				for other_entry in (results[:i] + results[i+1:]):
+					if url not in other_entry:
+						in_other_entries = False
+				if in_other_entries and url not in urls:
+					urls.append(url)
+
+		sorted_urls = sort(urls)
+
+		return sorted_urls
+	
+	else:
+		return ["No results found."]
+
+def sort(urls):
+	relevance_weight = 1
+	popularity_weight = 1
+
+	scored_urls = []
+
+	for url in urls:
+		score = 0
+
+		try:
+			score = url[1] + popularity_index{url[0]}
+		except:
+			pass
+
+		scored_urls.append([url[0], score])
+
+	sorted_urls = [scored_urls[0]]
+
+	for url in scored_urls:
+		for i in range(0, len(sorted_urls)):
+			sorted_url = sorted_urls[i]
+			if url[1] > sorted_url[1] and url not in sorted_urls:
+				sorted_urls.insert(i, url)
+
+		if url not in sorted_urls:
+			sorted_urls.append(url)
+
+	return sorted_urls
