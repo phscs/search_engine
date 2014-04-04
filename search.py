@@ -1,8 +1,20 @@
 import urllib
 import string
+import pickledb
 
-index = {}
-popularity_index = {}
+db = pickledb.load("db.db", False)
+db.dcreate("index")
+db.dcreate("popularity_index")
+
+"""
+db.dadd("index", (key, value))		>> adds key-value pair to dictionary
+db.dgetall("index")					>> returns entire dictionary
+db.dget("index", key)				>> returns value for key
+db.pop("index", key)				>> removes key-value pair from dictionary
+
+db.deldb()							>> clears out database
+db.dump()							>> writes the database to disk
+"""
 
 def get_links(source):
 	links = []
@@ -12,16 +24,16 @@ def get_links(source):
 	for i in range(0, len(source)):
 		character = source[i]
 
-	if source[i-6 : i] == 'href="' or source[i-6 : i] == "href='":
-		collecting_characters = True
+		if source[i-6 : i] == 'href="' or source[i-6 : i] == "href='":
+			collecting_characters = True
 
-	if collecting_characters:
-		if character == '"' or character == "'":
-			collecting_characters = False
-			links.append(link_temp)
-			link_temp = ""
-		else:
-			link_temp += character
+		if collecting_characters:
+			if character == '"' or character == "'":
+				collecting_characters = False
+				links.append(link_temp)
+				link_temp = ""
+			else:
+				link_temp += character.decode("utf-8")
 
 	return links
 
@@ -38,9 +50,9 @@ def get_keywords(source):
 			collecting_characters = True
 		elif collecting_characters:
 			if character in string.punctuation or character in ["\r","\n","\t"]:
-				collected_characters += " "
+				collected_characters += u" "
 			else:
-				collected_characters += character.lower()
+				collected_characters += character.lower().decode("utf-8")
 
 	keywords = collected_characters.split(" ")
 
@@ -54,9 +66,12 @@ def get_keywords(source):
 	return keywords
 
 def add_to_index(url, keywords):
-    for keyword in keywords:
+	index = db.dgetall("index")
+	
+	for keyword in keywords:		
 		if keyword not in index:
-			index[keyword] = [[url, 0]]
+			value = [[url, 0]]
+			db.dadd("index", (keyword, value))
 
 		else:
 			url_already_in_entry = False
@@ -66,43 +81,63 @@ def add_to_index(url, keywords):
 					url_already_in_entry = True
 
 			if not url_already_in_entry:
-				index[keyword].append([rank, 0])
-		
+				urls = index[keyword]
+				urls.append([url, 0])
+				db.dadd("index", (keyword, urls))
+
 def crawl(seed_page_url):
-        urls_to_crawl = [seed_page_url]
-        urls_already_crawled = []
-        crawls = 0
+		urls_to_crawl = [seed_page_url]
+		urls_already_crawled = []
+		crawls = 0
 
-        while len(urls_to_crawl) > 0 and crawls < 50:
-            url = urls_to_crawl[0]
-            source = urllib.urlopen(url).read()
+		while len(urls_to_crawl) > 0 and crawls < 50:
+			try:
+				url = urls_to_crawl[0]
+				source = urllib.urlopen(url).read()
+				print "crawling " + url
 
-            keywords = get_keywords(source)
-            add_to_index(url, keywords)
+				print "getting keywords..."
+				keywords = get_keywords(source)
+				
+				print "adding to index..."
+				add_to_index(url, keywords)
 
-            links = get_links(source)
+				print "getting links..."
+				links = get_links(source)
 
-            for link in links:
-                uprank_popularity(link)
-                if link != url and link not in urls_already_crawled:
-                    urls_to_crawl.append(link)
+				for link in links:
+					uprank_popularity(link)
+					if link != url and link not in urls_already_crawled and link not in urls_to_crawl:
+						urls_to_crawl.append(link)
 
-            urls_to_crawl.remove(url)
-            urls_already_crawled.append(url)
+			except Exception, e:
+				print str(e)
 
-            crawls += 1
+			print "writing to disk..."
+			db.dump()
+			urls_to_crawl.remove(url)
+			urls_already_crawled.append(url)
+			crawls += 1
+			
+		print "crawl finished."
 
 def uprank_popularity(url):
-    if url in popularity_index:
-        popularity_index[url] += 1
-    else:
-        popularity_index[url] = 1
+	popularity_index = db.dgetall("popularity_index")
+	
+	if url in popularity_index:
+		rank = db.dget("popularity_index", url) + 1
+		db.dadd("popularity_index", (url, rank))
+	else:
+		db.dadd("popularity_index", (url, 1))
 
 def uprank_relevance(keyword, url):
-    if keyword in index:
-        for entry in index[keyword]:
-            if url == entry[0]:
-                entry[1] += 1
+	urls = db.dget("index", keyword)
+	
+	for entry in urls:
+		if entry[0] == url:
+			entry[1] += 1
+	
+	db.dadd("index", (keyword, urls))
 
 def query(search_string):
 	sanitized_search_string = ""
@@ -113,6 +148,7 @@ def query(search_string):
 
 	keywords = sanitized_search_string.split(" ")
 
+	index = db.dgetall("index")
 	results = []
 
 	for keyword in keywords:
@@ -143,6 +179,7 @@ def sort(urls):
 	relevance_weight = 1
 	popularity_weight = 1
 
+	popularity_index = db.dgetall("popularity_index")
 	scored_urls = []
 
 	for url in urls:
