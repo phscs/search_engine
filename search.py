@@ -2,6 +2,7 @@ import urllib
 import string
 
 index = {}
+popularity_index = {}
 
 def get_links(source):
 	links = []
@@ -66,25 +67,39 @@ def add_to_index(url, keywords):
 
 			if not url_already_in_entry:
 				index[keyword].append([rank, 0])
-				
+		
 def crawl(seed_page_url):
-	urls_to_crawl = [seed_page_url]
-	urls_already_crawled = []
-	crawls = 0
+        urls_to_crawl = [seed_page_url]
+        urls_already_crawled = []
+        crawls = 0
 
-	while len(urls_to_crawl) > 0 and crawls < 50:
-		url = urls_to_crawl[0]
-		source = urllib.urlopen(url).read()
+        while len(urls_to_crawl) > 0 and crawls < 50:
+            url = urls_to_crawl[0]
+            source = urllib.urlopen(url).read()
 
-		keywords = get_keywords(source)
-		add_to_index(url, keywords)
+            keywords = get_keywords(source)
+            add_to_index(url, keywords)
 
-		links = get_links(source)
+            links = get_links(source)
 
-		for link in links:
-			if link != url and link not in urls_already_crawled and link not in urls_to_crawl:
-				urls_to_crawl.append(link)
+            for link in links:
+                uprank_popularity(link)
+                if link != url and link not in urls_already_crawled:
+                    urls_to_crawl.append(link)
 
-		urls_to_crawl.remove(url)
-		urls_already_crawled.append(url)
-		crawls += 1
+            urls_to_crawl.remove(url)
+            urls_already_crawled.append(url)
+
+            crawls += 1
+
+def uprank_popularity(url):
+    if url in popularity_index:
+        popularity_index[url] += 1
+    else:
+        popularity_index[url] = 1
+
+def uprank_relevance(keyword, url):
+    if keyword in index:
+        for entry in index[keyword]:
+            if url == entry[0]:
+                entry[1] += 1
