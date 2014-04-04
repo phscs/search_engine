@@ -1,4 +1,5 @@
 import urllib
+import string
 
 index = urllib.urlopen("index.html").read()
 
@@ -23,4 +24,30 @@ def get_links(source):
 
 	return links
 
-print get_links(index)
+def get_keywords(source):
+	collecting_characters = False
+	collected_characters = ""
+
+	for i in range(0, len(source)):
+		character = source[i]
+
+		if character == "<":
+			collecting_characters = False
+		elif character == ">":
+			collecting_characters = True
+		elif collecting_characters:
+			if character in string.punctuation or character in ["\r","\n","\t"]:
+				collected_characters += " "
+			else:
+				collected_characters += character.lower()
+
+	keywords = collected_characters.split(" ")
+
+	while "" in keywords:
+		keywords.remove("")
+
+	for word in keywords:
+		if word in keywords[keywords.index(word)+1:]:
+			keywords.remove(word)
+
+	return keywords
