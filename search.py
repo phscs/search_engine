@@ -149,7 +149,7 @@ def sort(urls):
 		score = 0
 
 		try:
-			score = url[1] + popularity_index{url[0]}
+			score = url[1] + popularity_index[url[0]]
 		except:
 			pass
 
