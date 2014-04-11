@@ -212,7 +212,7 @@ def sort(urls, relevance_weight, popularity_weight):
 		score = 0
 
 		try:
-			score = url[1] + popularity_index[url[0]]
+			score = relevance_weight * url[1] + popularity_weight * popularity_index[url[0]]
 		except:
 			pass
 
